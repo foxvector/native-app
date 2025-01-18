@@ -1,5 +1,6 @@
 
 # react-native-iap
+Git repo: https://github.com/dooboolab/react-native-iap
 This a react-native link library project for in-app-purchase for both android and ios project. The goal for this project is to have similar experience between the two platforms for in-app-purchase. Basically android platform has more functions for in-app-purchase and is not our specific interests for this project. However if you look inside the index.js file, you will have some more hidden android functions which won't be supported in the readme. You can look inside if you want something more in android though. Android iap is implemented with iap version 3 which is currently recent.
 
 ## Getting started
@@ -76,7 +77,7 @@ componentDidMount = async() => {
 Finally when you getItems with RNIap module, you can buyItem using it's api.
 ```javascript
   const receipt = await RNIap.buyItem(sku);
-  // above will return receipt string which can be used to validate on your server.
+  // avoid will return receipt string which can be used to validate on your server.
 ```
 
 In future release, we will provide the subscribe apis also.
