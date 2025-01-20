@@ -10,10 +10,14 @@ const ModuleIOS = {
       resolve(msg);
     });
   },
+  fetchHistory() {
+    console.log(' module : fetch history ');
+
+  },
   getItems(skus) {
     return new Promise(function (resolve, reject) {
       if (!skus.ios) {
-        console.log('Error skus.ios');
+        console.lod('  Error skus.ios ');
         reject(new Error('ios items are not defined. It should be defined inside param like items.ios.'));
         return;
       }
