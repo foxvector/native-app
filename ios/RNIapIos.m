@@ -10,7 +10,6 @@
 @interface RNIapIos() {
   RCTResponseSenderBlock purchaseCallback;
   RCTResponseSenderBlock productListCB;
-  RCTResponseSenderBlock historyCB;
 
   int cnt;
 
@@ -34,16 +33,6 @@
 
 ////////////////////////////////////////////////////     _//////////_//      EXPORT_MODULE
 RCT_EXPORT_MODULE();
-
-RCT_EXPORT_METHOD(fetchHistory:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"\n\n\n\n Obj c >> InAppPurchase  :: fetchHistory \n\n\n\n .");
-
-  historyCB = callback;
-
-  SKReceiptRefreshRequest *request = [[SKReceiptRefreshRequest alloc] init];
-  request.delegate = self;
-  [request start];
-}
 
 RCT_EXPORT_METHOD(fetchProducts:(NSString *)prodJsonArray callback:(RCTResponseSenderBlock)callback) {
   RCTLogInfo(@"\n\n\n\n Obj c >> InAppPurchase  :: fetchProducts \n\n\n\n .");
@@ -81,7 +70,7 @@ RCT_EXPORT_METHOD(purchaseItem:(NSString *)productID callback:(RCTResponseSender
 RCT_EXPORT_METHOD(purchaseSubscribeItem:(NSString *)productID callback:(RCTResponseSenderBlock)callback) {
     RCTLogInfo(@"\n\n\n\n Obj c >> InAppPurchase  :: purchaseItem :: %@    Valid Product : %ld  \n\n\n\n .", productID, (unsigned long)validProducts.count);
     purchaseCallback = callback;
-
+    
     for (int k = 0; k < validProducts.count; k++) {
         SKProduct *theProd = [validProducts objectAtIndex:k];
         if ([productID isEqualToString:theProd.productIdentifier]) {
@@ -151,9 +140,6 @@ RCT_EXPORT_METHOD(purchaseSubscribeItem:(NSString *)productID callback:(RCTRespo
 }
 
 -(void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray *)transactions {
-
-  historyCB(@[[NSNull null], transactions]);
-
   for (SKPaymentTransaction *transaction in transactions) {
     switch (transaction.transactionState) {
       case SKPaymentTransactionStatePurchasing:
@@ -183,10 +169,6 @@ RCT_EXPORT_METHOD(purchaseSubscribeItem:(NSString *)productID callback:(RCTRespo
         break;
     }
   }
-}
-
--(void)paymentQueueRestoreCompletedTransactionsFinished:(SKPaymentQueue *)queue {
-  NSLog(@"  paymentQueueRestoreCompletedTransactionsFinished  ");
 }
 
 -(void)purchaseProcess:(SKPaymentTransaction *)trans {

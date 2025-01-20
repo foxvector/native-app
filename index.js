@@ -10,25 +10,6 @@ const ModuleIOS = {
       resolve(msg);
     });
   },
-  fetchHistory() {
-    console.log(' module : fetch history ');
-    return new Promise(function (resolve, reject) {
-      // if (!skus.ios) {
-      //   console.lod('  Error skus.ios ');
-      //   reject(new Error('ios items are not defined. It should be defined inside param like items.ios.'));
-      //   return;
-      // }
-
-      RNIapIos.fetchHistory((err, items) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        const objs = items.map(o => JSON.parse(o));
-        resolve(objs);
-      });
-    });
-  },
   getItems(skus) {
     return new Promise(function (resolve, reject) {
       if (!skus.ios) {
@@ -135,14 +116,12 @@ const ModuleAndroid = {
       });
     });
   },
-  refreshPurchaseItemsAndroid(type) {
-    // Noramlly put null on type. If you want to fetch subscriptions item put 'SUBS' in type param
-    RNIapModule.refreshPurchaseItems(type);
+  refreshPurchaseItemsAndroid() {
+    RNIapModule.refreshPurchaseItems();
   },
-  getPurchasedItemsAndroid(type) {
-    // Noramlly put null on type. If you want to fetch subscriptions item put 'SUBS' in type param
+  getPurchasedItemsAndroid() {
     return new Promise(function (resolve, reject) {
-      RNIapModule.getOwnedItems(type,
+      RNIapModule.getOwnedItems(
         (err, items) => {
           if (err) {
             reject(err);

@@ -187,19 +187,14 @@ public class RNIapModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void getOwnedItems(String type, final Callback cb) {
+  public void getOwnedItems(final Callback cb) {
     if (mService == null) {
       cb.invoke("IAP not prepared. Please restart your app again.", null);
       return;
     }
 
-    String skuType = BillingClient.SkuType.INAPP;
-    if (type != null && type.equals("SUBS")) {
-      skuType = BillingClient.SkuType.SUBS;
-    }
-
     // Purchase.PurchasesResult purchasesResult = mBillingClient.queryPurchases(BillingClient.SkuType.INAPP);
-    mBillingClient.queryPurchaseHistoryAsync(skuType, new PurchaseHistoryResponseListener() {
+    mBillingClient.queryPurchaseHistoryAsync(BillingClient.SkuType.INAPP, new PurchaseHistoryResponseListener() {
       @Override
       public void onPurchaseHistoryResponse(@BillingClient.BillingResponse int responseCode,
                                             List<Purchase> purchasesList) {
@@ -234,15 +229,10 @@ public class RNIapModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void refreshPurchaseItems(String type) {
+  public void refreshPurchaseItems() {
     try {
       if (mService != null) {
-        String skuType = BillingClient.SkuType.INAPP;
-        if (type != null && type.equals("SUBS")) {
-          skuType = BillingClient.SkuType.SUBS;
-        }
-
-        Bundle ownedItems = mService.getPurchases(3, reactContext.getPackageName(), skuType, null);
+        Bundle ownedItems = mService.getPurchases(3, reactContext.getPackageName(), "inapp", null);
         int response = ownedItems.getInt("RESPONSE_CODE");
         if (response == 0) {
           ArrayList
@@ -256,6 +246,7 @@ public class RNIapModule extends ReactContextBaseJavaModule {
           }
         }
       }
+      // 토큰을 모두 컨슘했으니 구매 메서드 처리
     } catch (Exception e) {
       e.printStackTrace();
     }
