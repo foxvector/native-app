@@ -296,7 +296,7 @@ public class RNIapModule extends ReactContextBaseJavaModule {
         }
       }
       if (prepareCB != null) {
-        prepareCB.invoke(billingResponseCode, null);
+        prepareCB.invoke("IAP not prepared. Please try again.", null);
       }
     }
     @Override
