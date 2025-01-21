@@ -209,7 +209,7 @@ RCT_EXPORT_METHOD(purchaseSubscribeItem:(NSString *)productID callback:(RCTRespo
   formatter.numberStyle = NSNumberFormatterCurrencyStyle;
   formatter.locale = theProd.priceLocale;
   NSString *localizedPrice = [formatter stringFromNumber:theProd.price];
-  
+
   NSDictionary *dic = @{ @"productId" : theProd.productIdentifier,
                          @"price" : theProd.price,
                          @"currency" : theProd.priceLocale.currencyCode,
@@ -231,7 +231,7 @@ RCT_EXPORT_METHOD(purchaseSubscribeItem:(NSString *)productID callback:(RCTRespo
   } else {
     receiptData = [transaction transactionReceipt];
   }
-  
+
   NSMutableDictionary *purchase = [NSMutableDictionary dictionaryWithDictionary: @{
                                                                                    @"transactionDate": @(transaction.transactionDate.timeIntervalSince1970 * 1000),
                                                                                    @"transactionIdentifier": transaction.transactionIdentifier,
@@ -244,7 +244,7 @@ RCT_EXPORT_METHOD(purchaseSubscribeItem:(NSString *)productID callback:(RCTRespo
     purchase[@"originalTransactionDate"] = @(originalTransaction.transactionDate.timeIntervalSince1970 * 1000);
     purchase[@"originalTransactionIdentifier"] = originalTransaction.transactionIdentifier;
   }
-  
+
   return purchase;
 }
 

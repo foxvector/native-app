@@ -95,6 +95,25 @@ const ModuleAndroid = {
       );
     });
   },
+  getSubscribeItems(skus) {
+    return new Promise(function (resolve, reject) {
+      if (!skus.android) {
+        reject(new Error('android items are not defined. It should be defined inside param like items.android.'));
+        return;
+      }
+      RNIapModule.getSubItems(
+        JSON.stringify(skus.android),
+        (err, items) => {
+          if (err){
+            reject(err);
+            return;
+          }
+          const parsedItems = JSON.parse(items);
+          resolve(parsedItems);
+        }
+      );
+    });
+  },
   buyItem(item) {
     return new Promise(function (resolve, reject) {
       RNIapModule.buyItem(item, (err, purchase) => {
@@ -130,7 +149,7 @@ const ModuleAndroid = {
           reject (err);
           return;
         }
-        RNIapModule.refreshPurchaseItems();
+        RNIapModule.refreshPurchaseItems(null);
         resolve(msg);
       });
     });
