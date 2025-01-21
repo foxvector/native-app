@@ -334,6 +334,7 @@ iOS : restore non-consumable products via restoreCompletedTransactions()
 Thanks.
 
 by JJMoon and dooboolab.
+```
   try {
     const rslts = await RNIap.restoreProducts();
     console.log(' Restored Item :: ', rslts);
