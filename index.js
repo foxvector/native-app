@@ -52,7 +52,7 @@ export const getItems = (skus) => {
 export const getSubscribeItems = (skus) => {
   if (Platform.OS === 'ios') {
     // ios will just use existing function
-    return getItems(skus);
+    getItems(skus);
   }
   else if (Platform.OS === 'android') {
     return new Promise(function (resolve, reject) {
