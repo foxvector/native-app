@@ -3,7 +3,7 @@
   <a href="https://npmjs.org/package/react-native-iap"><img alt="npm version" src="http://img.shields.io/npm/v/react-native-iap.svg?style=flat-square"></a>
   <a href="https://npmjs.org/package/react-native-iap"><img alt="npm version" src="http://img.shields.io/npm/dm/react-native-iap.svg?style=flat-square"></a>
 </p>
-This is a react-native link library project for in-app-purchase for both android and ios project. The goal for this project is to have similar experience between the two platforms for in-app-purchase. Basically android platform has more functions for in-app-purchase and is not our specific interests for this project.
+This is a react-native link library project for in-app-purchase for both android and ios project. The goal for this project is to have similar experience between the two platforms for in-app-purchase. Basically android platform has more functions for in-app-purchase and is not our specific interests for this project. 
 
 We are willing to share same in-app-purchase experience for both android and ios platform and will continuously merge methods which are standing alone.
 
@@ -14,7 +14,9 @@ react-native-iap@0.2.0 has been published and it is recommended to use version a
 `react-native-iap` module versions that are not described in `change logs` may not run as expected so please refer to version mentioned in `Changelogs` below.
 
 ## Breaking Changes
-Recent breaking changes have made from `0.2.16` in android. Pakcage name has been fixed to `com.dooboolab.RNIap.RNIapPackage`. Read the changelogs below. There was linking [issue](https://github.com/dooboolab/react-native-iap/issues/49#issuecomment-369811257) with wrong package name.
+Recent breaking changes have made from `0.2.17`. `refreshAllItems` has changed name to `fetchHistory`. See the changelogs below.
+
+Recent breaking changes have made from `0.2.16` in android. Package name has been fixed to `com.dooboolab.RNIap.RNIapPackage`. Read the changelogs below. There was linking [issue](https://github.com/dooboolab/react-native-iap/issues/49#issuecomment-369811257) with wrong package name.
 
 Breaking changes have made from `0.2.12`. Please read the changelogs below. The summary of change is that it now returns receipt in different format.
 
@@ -26,6 +28,8 @@ Also there are some other methods that is not supported in ios and implemented i
 Lastly, this module also supports types for typescript users from `0.2.5`.
 
 ## Changelogs
+- **[0.2.17]**
+  + `refreshAllItems` has changed name to `fetchHistory` since android and ios had different functionality and fixed to fetching history of purchases.
 - **[0.2.16]**
   + Changed android package name `com.reactlibrary.RNIapPackage` to `com.dooboolab.RNIap.RNIapPackage`;.
 - **[0.2.15]**
@@ -59,7 +63,7 @@ Lastly, this module also supports types for typescript users from `0.2.5`.
     - refreshPurchaseItemsAndroid(type: string)
     - getPurchasedItemsAndroid(type: string)
     - consumeItemAndroid(token: string)
-  + Able to call prepareAndroid() function without any conditional statement like if (Platform.OS === 'android'). Just use it.
+  + Able to call prepareAndroid() function without any conditional statement like if (Platform.OS === 'android'). Just use it. 
   + Updated Readme.
 - **[0.1.10]**
   + Fixed potential bug relied on preparing IAP module in Android. Updated readme to see how to use it.
@@ -67,14 +71,15 @@ Lastly, this module also supports types for typescript users from `0.2.5`.
 #### Methods
 | Func  | Param  | Return | Description |
 | :------------ |:---------------:| :---------------:| :-----|
-| prepare |  | `Promise<void>` | Prepare IAP module. Must be called on Android before any other purchase flow methods. No-op on iOS.|
-| getProducts | `string[]` Product IDs/skus | `Promise<Product[]>` | Get a list of products (consumable and non-consumable items, but not subscriptions) |
-| getSubscriptions | `string[]` Subscription IDs/skus | `Promise<Subscription[]>` | Get a list of subscriptions |
-| getPurchaseHistory | | `Promise<Purchase[]>` | Gets an invetory of purchases made by the user regardless of consumption status (where possible) |
-| getAvailablePurchases | | `Promise<Purchase[]>` | Get all purchases made by the user (either non-consumable, or haven't been consumed yet)
-| buySubscription | `string` Subscription ID/sku | `Promise<Purchase>` | Create (buy) a subscription to a sku |
-| buyProduct | `string` Product ID/sku | `Promise<Purchase>` | Buy a product |
-| consumeProduct | `string` Purchase token | `Promise<void>` | Consume a product (on Android.) No-op on iOS. |
+| prepareAndroid |  | `Promise` | Prepare IAP module for android. Should be called in android before using any methods in RNIap.|
+| getItems | { android: [], ios: [] } | `Promise` | get purchasable items in array. |
+| getSubscribeItems | `string` | `Promise` | Get subscription items. |
+| buyItem | `json object` | `Promise` | Purchase item. |
+| buySubscribeItem | `string` | `Promise` | Buy subscription item. |
+| fetchHistory | | `Promise` | Refresh all items to make them available to buy again. |
+| refreshPurchaseItemsAndroid | `string` | `Promise` | refresh purchased items for android. This method can get parameter to refresh `INAPP` items or `SUBS` items.|
+| getPurchaseItemsAndroid | `string` | `Promise` | get purchased items for android. This method also gets parameter to refresh `INAPP` items or `SUBS` items.|
+| consumeItemAndroid | `string` | `Promise` | consume item for android. After buying some item from consumable item in android, you can use this method to consume it. Therefore you can purchase the item again. |
 
 ## Npm repo
 https://www.npmjs.com/package/react-native-iap
@@ -153,7 +158,7 @@ async preparing function() {
       6: ERROR
       7: ITEM_ALREADY_OWNED
       8: ITEM_NOT_OWNED
-    */
+    */ 
   }
 }
 ```
@@ -167,7 +172,7 @@ async componentDidMount() {
     const items = await RNIap.getItems(itemSkus)
     this.setState({items})
   } catch(errorCode) {
-
+  
   }
 }
 ```
@@ -209,7 +214,7 @@ RNIap.buyItem('com.cooni.point1000').then(receipt=>{
         // ios error.code 2 means that the user cancelled. No need to alert them. Just reset the UI.
       } else {
         // ios error.description gives a so-so English description of the error that the user should be able to understand.
-        // You could also give your own descriptions based on error.code instead:
+        // You could also give your own descriptions based on error.code instead:  
         // https://developer.apple.com/documentation/storekit/skerror.code
         alert(error.description)
       }
@@ -244,13 +249,12 @@ Non consumable products can be restored after user deletes the app and redownloa
 Refer to RNIapExample's source code.
 
 The restoring/refreshing processes for iOS and Android differ. It's similar, though function names and the exact processes are slightly different.
-Using RNIap.refreshAllItems() will achieve the same effect for both iOS and Android. Note that we added a restoreIosNonConsumableProducts() function to the module for iOS use. You do not need to call this. Just use refreshAllItems().
-(We may remove the iOS part in the refreshAllItems() function in the future)
+Using RNIap.fetchHistory() will achieve the same effect for both iOS and Android. Note that we added a restoreIosNonConsumableProducts() function to the module for iOS use. You do not need to call this. Just use fetchHistory().
 
 ```javascript
 restorePreProdducts = async() => {
   try {
-    const results = await RNIap.refreshAllItems() // cross platform case
+    const results = await RNIap.fetchHistory() // cross platform case
     let restoredTitles = ""
     results.forEach(result=>{
       if (result.productIdentifier == "com.mywebsite.MyAppPremiumVersion") {
