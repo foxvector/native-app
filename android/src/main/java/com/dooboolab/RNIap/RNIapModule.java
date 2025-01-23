@@ -15,8 +15,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.Promise;
-import com.facebook.internal.BundleJSONConverter;
+import com.facebook.react.bridge.Callback;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -40,25 +39,10 @@ import com.android.vending.billing.IInAppBillingService;
 public class RNIapModule extends ReactContextBaseJavaModule {
   final String TAG = "RNIapModule";
 
-  private static final String E_UNKNOWN = "E_UNKNOWN";
-  private static final String E_NOT_PREPARED = "E_NOT_PREPARED";
-  private static final String E_DEVICE_NOT_ALLOWED = "E_DEVICE_NOT_ALLOWED";
-  private static final String E_PAYMENT_NOT_ALLOWED = "E_PAYMENT_NOT_ALLOWED";
-  private static final String E_USER_CANCELLED = "E_USER_CANCELLED";
-  private static final String E_INVALID_PAYMENT_INFORMATION = "E_INVALID_PAYMENT_INFORMATION";
-  private static final String E_PURCHASE_HISTORY_FETCH_FAILED = "E_PURCHASE_HISTORY_FETCH_FAILED";
-  private static final String E_ITEM_UNAVAILABLE = "E_ITEM_UNAVAILABLE";
-  private static final String E_PERMISSION_DENIED = "E_PERMISSION_DENIED";
-  private static final String E_NETWORK_CONNECTION_FAILED = "E_NETWORK_CONNECTION_FAILED";
-  private static final String E_ITEMS_FETCH_FAILED = "E_ITEMS_FETCH_FAILED";
-  private static final String E_PURCHASE_FAILED = "E_PURCHASE_FAILED";
-  private static final String E_PURCHASE_CONSUME_FAILED = "E_PURCHASE_CONSUME_FAILED";
-  private static final String E_USER_INTERFERENCE = "E_USER_INTERFERENCE";
-
   final Activity activity = getCurrentActivity();
   private ReactContext reactContext;
-  private Promise preparePromise = null;
-  private Promise buyItemPromise = null;
+  private Callback prepareCB = null;
+  private Callback buyItemCB = null;
   private IInAppBillingService mService;
   private BillingClient mBillingClient;
 
@@ -108,165 +92,299 @@ public class RNIapModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void prepare(Promise promise) {
+  public void prepare(final Callback cb) {
     Intent intent = new Intent("com.android.vending.billing.InAppBillingService.BIND");
     // This is the key line that fixed everything for me
     intent.setPackage("com.android.vending");
-    preparePromise = promise;
+    prepareCB = cb;
 
     try {
       reactContext.bindService(intent, mServiceConn, Context.BIND_AUTO_CREATE);
       mBillingClient = BillingClient.newBuilder(reactContext).setListener(purchasesUpdatedListener).build();
       mBillingClient.startConnection(billingClientStateListener);
     } catch (Exception e) {
-      preparePromise.reject(E_NOT_PREPARED, e);
+      prepareCB.invoke(e.getMessage(), null);
     }
   }
 
   @ReactMethod
-  public void getItemsByType(String type, List<String> skus, Promise promise) {
+  public void getItems(String items, final Callback cb) {
     if (mService == null) {
-      return promise.reject(E_NOT_PREPARED, "IAP not prepared. Check if Google Play service is available.");
+      cb.invoke("IAP not prepared. Check if google play service is available.", null);
+      return;
     }
 
-    SkuDetailsParams.Builder params = SkuDetailsParams.newBuilder();
-    params.setSkusList(skus).setType(type);
-    mBillingClient.querySkuDetailsAsync(params.build(),
-        new SkuDetailsResponseListener() {
-          @Override
-          public void onSkuDetailsResponse(int responseCode, List<SkuDetails> skuDetailsList) {
-            Log.d(TAG, "responseCode: " + responseCode);
-            if (responseCode == BillingClient.BillingResponse.OK) {
-              Array<WritableMap> items = new Array<WritableMap>();
+    try {
+      JSONArray jsonArray = new JSONArray(items);
+      ArrayList<String> skuList = new ArrayList<> ();
 
-              for (SkuDetails skuDetails : skuDetailsList) {
-                WritableMap item = Arguments.createMap();
-                item.putString("productId", skuDetails.getSku());
-                item.putDouble("price", skuDetails.getPrice());
-                item.putString("currency", skuDetails.getPriceCurrencyCode());
-                item.putString("type", skuDetails.getType());
-                item.putDouble("localizedPrice", skuDetails.getPrice());
-                item.putString("title", skuDetails.getTitle());
-                item.putString("description", skuDetails.getDescription());
-                items.add(item);
-              }
-
-              promise.resolve(items);
-            }
-            else {
-              promise.reject(E_ITEMS_FETCH_FAILED, responseCode);
-            }
-          }
-        }
-    );
-  }
-
-
-  @ReactMethod
-  public void getAvailableItemsByType(String type, Promise promise) {
-    if (mService == null) {
-      return promise.reject(E_NOT_PREPARED, "IAP not prepared. Check if Google Play service is available.");
-    }
-
-    Bundle availableItems = mService.getPurchases(3, reactContext.getPackageName(), skuType, null);
-    int response = ownedItems.getInt("RESPONSE_CODE");
-
-    Array<WritableMap> items = new Array<WritableMap>();
-
-    if (responseCode == BillingClient.BillingResponse.OK) {
-      ArrayList purchaseDataList = availableItems.getStringArrayList("INAPP_PURCHASE_DATA_LIST");
-
-      for (String purchaseJSON : purchaseDataList) {
-        JSONObject json = new JSONObject(purchaseJSON);
-        WritableMap item = new WritableMap();
-        item.putString("productId", json.get("productId"));
-        item.putString("transactionId", json.get("orderId"));
-        item.putString("transactionDate", json.get("purchaseTime"));
-        item.putString("transactionReceipt", json.get("purchaseToken"));
-        item.putString("purchaseToken", json.get("purchaseToken"));
-
-        if (type == BillingClient.SkuType.SUBS) {
-          item.putBoolean("autoRenewing", json.get("autoRenewing"));
-        }
-
-        items.add(item);
+      for (int i = 0; i < jsonArray.length(); i++) {
+        String str = jsonArray.get(i).toString();
+        skuList.add(str);
       }
 
-      promise.resolve(items);
-    }
-    else {
-      promise.reject(E_PURCHASE_HISTORY_FETCH_FAILED, responseCode);
+      SkuDetailsParams.Builder params = SkuDetailsParams.newBuilder();
+      params.setSkusList(skuList).setType(BillingClient.SkuType.INAPP);
+      mBillingClient.querySkuDetailsAsync(params.build(),
+          new SkuDetailsResponseListener() {
+            @Override
+            public void onSkuDetailsResponse(int responseCode, List<SkuDetails> skuDetailsList) {
+              Log.d(TAG, "responseCode: " + responseCode);
+              // Log.d(TAG, skuDetailsList ? skuDetailsList.toString() : '');
+
+              JSONArray jsonResponse = new JSONArray();
+              try {
+                for (SkuDetails skuDetails : skuDetailsList) {
+                  JSONObject json = new JSONObject();
+                  json.put("productId", skuDetails.getSku());
+                  json.put("price", skuDetails.getPrice());
+                  json.put("currency", skuDetails.getPriceCurrencyCode());
+                  json.put("type", skuDetails.getType());
+                  json.put("localizedPrice", skuDetails.getPrice());
+                  json.put("price_currency", skuDetails.getPriceCurrencyCode());
+                  json.put("title", skuDetails.getTitle());
+                  json.put("description", skuDetails.getDescription());
+                  jsonResponse.put(json);
+                }
+              } catch (JSONException je) {
+                cb.invoke(je.getMessage(), null);
+                return;
+              }
+              cb.invoke(null, jsonResponse.toString());
+            }
+          }
+      );
+    } catch (JSONException je) {
+      cb.invoke(je.getMessage(), null);
     }
   }
 
   @ReactMethod
-  public void getPurchaseHistoryByType(String type, Promise promise) {
+  public void getSubItems(String items, final Callback cb) {
     if (mService == null) {
-      return promise.reject(E_NOT_PREPARED, "IAP not prepared. Check if Google Play service is available.");
+      cb.invoke("IAP not prepared. Check if google play service is available.", null);
+      return;
     }
 
-    mBillingClient.queryPurchaseHistoryAsync(type, new PurchaseHistoryResponseListener() {
+    try {
+      JSONArray jsonArray = new JSONArray(items);
+      ArrayList<String> skuList = new ArrayList<> ();
+
+      for (int i = 0; i < jsonArray.length(); i++) {
+        String str = jsonArray.get(i).toString();
+        skuList.add(str);
+      }
+
+      SkuDetailsParams.Builder params = SkuDetailsParams.newBuilder();
+      params.setSkusList(skuList).setType(BillingClient.SkuType.SUBS);
+      mBillingClient.querySkuDetailsAsync(params.build(),
+          new SkuDetailsResponseListener() {
+            @Override
+            public void onSkuDetailsResponse(int responseCode, List<SkuDetails> skuDetailsList) {
+              Log.d(TAG, "responseCode: " + responseCode);
+              Log.d(TAG, skuDetailsList.toString());
+
+              JSONArray jsonResponse = new JSONArray();
+              try {
+                for (SkuDetails skuDetails : skuDetailsList) {
+                  JSONObject json = new JSONObject();
+                  json.put("productId", skuDetails.getSku());
+                  json.put("price", skuDetails.getPrice());
+                  json.put("currency", skuDetails.getPriceCurrencyCode());
+                  json.put("type", skuDetails.getType());
+                  json.put("localizedPrice", skuDetails.getPrice());
+                  json.put("price_currency", skuDetails.getPriceCurrencyCode());
+                  json.put("title", skuDetails.getTitle());
+                  json.put("description", skuDetails.getDescription());
+                  jsonResponse.put(json);
+                }
+              } catch (JSONException je) {
+                cb.invoke(je.getMessage(), null);
+                return;
+              }
+              cb.invoke(null, jsonResponse.toString());
+            }
+          }
+      );
+    } catch (JSONException je) {
+      cb.invoke(je.getMessage(), null);
+    }
+  }
+
+  @ReactMethod
+  public void buyItem(String id_item, Callback cb) {
+    buyItemCB = cb;
+    BillingFlowParams flowParams = BillingFlowParams.newBuilder()
+        .setSku(id_item)
+        .setType(BillingClient.SkuType.INAPP)
+        .build();
+
+    int responseCode = mBillingClient.launchBillingFlow(getCurrentActivity(), flowParams);
+    Log.d(TAG, "buyItem responseCode: " + responseCode);
+  }
+
+  @ReactMethod
+  public void buySubscribeItem(String id_item, Callback cb) {
+    buyItemCB = cb;
+    BillingFlowParams flowParams = BillingFlowParams.newBuilder()
+        .setSku(id_item)
+        .setType(BillingClient.SkuType.SUBS)
+        .build();
+
+    int responseCode = mBillingClient.launchBillingFlow(getCurrentActivity(), flowParams);
+    Log.d(TAG, "buyItem responseCode: " + responseCode);
+  }
+
+  @ReactMethod
+  public void getOwnedItems(String type, final Callback cb) {
+    if (mService == null) {
+      cb.invoke("IAP not prepared. Check if google play service is available.", null);
+      return;
+    }
+
+    String skuType = BillingClient.SkuType.INAPP;
+    if (type != null && type.equals("SUBS")) {
+      skuType = BillingClient.SkuType.SUBS;
+    }
+
+    // Purchase.PurchasesResult purchasesResult = mBillingClient.queryPurchases(BillingClient.SkuType.INAPP);
+    mBillingClient.queryPurchaseHistoryAsync(skuType, new PurchaseHistoryResponseListener() {
       @Override
       public void onPurchaseHistoryResponse(@BillingClient.BillingResponse int responseCode,
                                             List<Purchase> purchasesList) {
-        Log.d(TAG, "responseCode: " + responseCode);
-        Log.d(TAG, purchasesList.toString());
-
+        // JSONArray jsonArray = new JSONArray();
         if (responseCode == BillingClient.BillingResponse.OK && purchasesList != null) {
-          Array<WritableMap> items = new Array<WritableMap>();
-
+          JSONArray jsonResponse = new JSONArray();
           for (Purchase purchase : purchasesList) {
-            WritableMap item = new WritableMap();
-            item.putString("productId", purchase.getSku());
-            item.putString("transactionId", purchase.getOrderId());
-            item.putString("transactionDate", purchase.getPurchaseTime());
-            item.putString("transactionReceipt", purchase.getPurchaseToken());
-            item.putString("data", purchase.getOriginalJson());
-            item.putString("signature", purchase.getSignature());
-            item.putString("purchaseToken", purchase.getPurchaseToken());
-
-            if (type == BillingClient.SkuType.SUBS) {
-              item.putBoolean("autoRenewing", purchase.isAutoRenewing);
+            // Process the result.
+            // jsonArray.put(purchase);
+            Log.d(TAG, "responseCode: " + responseCode);
+            Log.d(TAG, purchasesList.toString());
+            try {
+              JSONObject json = new JSONObject();
+              json.put("data", purchase.getOriginalJson());
+              json.put("signature", purchase.getSignature());
+              jsonResponse.put(json);
+            } catch (JSONException je) {
+              cb.invoke(je.getMessage(), null);
+              return;
             }
-
-            items.add(item);
           }
-          promise.resolve(items);
+          cb.invoke(null, jsonResponse.toString());
         } else {
-          promise.reject(E_PURCHASE_HISTORY_FETCH_FAILED, responseCode);
+          cb.invoke(null, purchasesList.toString());
         }
       }
     });
   }
 
   @ReactMethod
-  public void buyItemByType(String type, String sku, Promise promise) {
-    buyItemPromise = promise;
-    BillingFlowParams flowParams = BillingFlowParams.newBuilder()
-        .setSku(sku)
-        .setType(type)
-        .build();
+  public void refreshPurchaseItems(String type) {
+    try {
+      if (mService != null) {
+        String skuType = BillingClient.SkuType.INAPP;
+        if (type != null && type.equals("SUBS")) {
+          skuType = BillingClient.SkuType.SUBS;
+        }
 
-    int responseCode = mBillingClient.launchBillingFlow(getCurrentActivity(), flowParams);
-    Log.d(TAG, "buyItemByType (type: " + type + ", sku: " + sku + ") responseCode: " + responseCode);
+        Bundle ownedItems = mService.getPurchases(3, reactContext.getPackageName(), skuType, null);
+        int response = ownedItems.getInt("RESPONSE_CODE");
+        if (response == 0) {
+          ArrayList
+              purchaseDataList = ownedItems.getStringArrayList("INAPP_PURCHASE_DATA_LIST");
+          String[] tokens = new String[purchaseDataList.size()];
+          for (int i = 0; i < purchaseDataList.size(); ++i) {
+            String purchaseData = (String) purchaseDataList.get(i);
+            JSONObject jo = new JSONObject(purchaseData);
+            tokens[i] = jo.getString("purchaseToken");
+            mService.consumePurchase(3, reactContext.getPackageName(), tokens[i]);
+          }
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 
   @ReactMethod
-  public void consumeProduct(String token, Promise promise) {
+  public void getPurchases(final Callback cb) {
     if (mService == null) {
-      return promise.reject(E_NOT_PREPARED, "IAP not prepared. Check if google play service is available.");
+      cb.invoke("IAP not prepared. Check if google play service is available.", null);
+      return;
+    }
+
+    try {
+      Bundle ownedItems = mService.getPurchases(3, reactContext.getPackageName(), BillingClient.SkuType.INAPP, BillingClient.SkuType.SUBS);
+      int response = ownedItems.getInt("RESPONSE_CODE");
+      JSONArray jsonResponse = new JSONArray();
+
+      if (response == 0) {
+        ArrayList purchaseDataList = ownedItems.getStringArrayList("INAPP_PURCHASE_DATA_LIST");
+        String[] tokens = new String[purchaseDataList.size()];
+        for (int i = 0; i < purchaseDataList.size(); ++i) {
+          String purchaseData = (String) purchaseDataList.get(i);
+          JSONObject jo = new JSONObject(purchaseData);
+          tokens[i] = jo.getString("purchaseToken");
+          // mService.consumePurchase(3, reactContext.getPackageName(), tokens[i]);
+          jsonResponse.put(jo);
+        }
+      }
+
+      cb.invoke(null, jsonResponse.toString());
+    } catch (Exception e) {
+      cb.invoke(e.toString(), null);
+    }
+  }
+
+  @ReactMethod
+  public void getPurchaseHistory(final Callback cb) {
+    if (mService == null) {
+      cb.invoke("IAP not prepared. Check if google play service is available.", null);
+      return;
+    }
+
+    try {
+      Bundle ownedItems = mService.getPurchaseHistory(9, BuildConfig.APPLICATION_ID, BillingClient.SkuType.INAPP, BillingClient.SkuType.SUBS, new Bundle());
+      int response = ownedItems.getInt("RESPONSE_CODE");
+      JSONArray jsonResponse = new JSONArray();
+
+      if (response == 0) {
+        ArrayList
+            purchaseDataList = ownedItems.getStringArrayList("INAPP_PURCHASE_DATA_LIST");
+        String[] tokens = new String[purchaseDataList.size()];
+        for (int i = 0; i < purchaseDataList.size(); ++i) {
+          String purchaseData = (String) purchaseDataList.get(i);
+          JSONObject jo = new JSONObject(purchaseData);
+          tokens[i] = jo.getString("purchaseToken");
+          // mService.consumePurchase(3, reactContext.getPackageName(), tokens[i]);
+          jsonResponse.put(jo);
+        }
+      }
+      cb.invoke(null, jsonResponse.toString());
+    } catch (Exception e) {
+      cb.invoke(e.toString(), null);
+    }
+  }
+
+  @ReactMethod
+  public void consumeItem(String token, final Callback cb) {
+    if (mService == null) {
+      cb.invoke("IAP not prepared. Check if google play service is available.", null);
+      return;
     }
 
     mBillingClient.consumeAsync(token, new ConsumeResponseListener() {
       @Override
       public void onConsumeResponse(@BillingClient.BillingResponse int responseCode, String outToken) {
         if (responseCode == BillingClient.BillingResponse.OK) {
+          // Handle the success of the consume operation.
+          // For example, increase the number of coins inside the user's basket.
           Log.d(TAG, "consume responseCode: " + responseCode);
-          promise.resolve();
+
+          cb.invoke(null, true);
+          return;
         }
-        else {
-          promise.reject(E_PURCHASE_CONSUME_FAILED, responseCode);
-        }
+        cb.invoke(null, false);
       }
     });
   }
@@ -277,12 +395,13 @@ public class RNIapModule extends ReactContextBaseJavaModule {
       if (billingResponseCode == BillingClient.BillingResponse.OK) {
         // The billing client is ready.
         Log.d(TAG, "billing client ready");
-        if (preparePromise != null) {
-          return preparePromise.resolve();
+        if (prepareCB != null) {
+          prepareCB.invoke(null, "IAP prepared");
+          return;
         }
       }
-      if (preparePromise != null) {
-        preparePromise.reject(E_NOT_PREPARED, billingResponseCode);
+      if (prepareCB != null) {
+        prepareCB.invoke(billingResponseCode, null);
       }
     }
     @Override
@@ -301,24 +420,21 @@ public class RNIapModule extends ReactContextBaseJavaModule {
       Log.d(TAG, "responseCode: " + responseCode);
       if (responseCode == BillingClient.BillingResponse.OK) {
         Purchase purchase = purchases.get(0);
-
-        WritableMap item = new WritableMap();
-        item.putString("productId", purchase.getSku());
-        item.putString("transactionId", purchase.getOrderId());
-        item.putString("transactionDate", purchase.getPurchaseTime());
-        item.putString("transactionReceipt", purchase.getPurchaseToken());
-        item.putString("data", purchase.getOriginalJson());
-        item.putString("signature", purchase.getSignature());
-        item.putString("purchaseToken", purchase.getPurchaseToken());
-
-        if (type == BillingClient.SkuType.SUBS) {
-          item.putBoolean("autoRenewing", purchase.isAutoRenewing);
+        JSONObject json = new JSONObject();
+        try {
+          json.put("signature", purchase.getSignature());
+          json.put("data", purchase.getOriginalJson());
+        } catch (JSONException e) {
+          e.printStackTrace();
         }
-
-        buyItemPromise.resolve(item);
-      }
-      else {
-        buyItemPromise.reject(E_PURCHASE_FAILED, responseCode);
+        Log.d(TAG, purchases.toString());
+        if (buyItemCB != null) {
+          buyItemCB.invoke(null, json.toString());
+        }
+        buyItemCB = null;
+      } else if (buyItemCB != null) {
+        buyItemCB.invoke(responseCode, null);
+        buyItemCB = null;
       }
     }
   };
