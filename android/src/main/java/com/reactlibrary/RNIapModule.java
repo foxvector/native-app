@@ -213,7 +213,6 @@ public class RNIapModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void buyItem(String id_item, Callback cb) {
-    buyItemCB = cb;
     BillingFlowParams flowParams = BillingFlowParams.newBuilder()
         .setSku(id_item)
         .setType(BillingClient.SkuType.INAPP)
@@ -221,11 +220,12 @@ public class RNIapModule extends ReactContextBaseJavaModule {
 
     int responseCode = mBillingClient.launchBillingFlow(getCurrentActivity(), flowParams);
     Log.d(TAG, "buyItem responseCode: " + responseCode);
+
+    buyItemCB = cb;
   }
 
   @ReactMethod
   public void buySubscribeItem(String id_item, Callback cb) {
-    buyItemCB = cb;
     BillingFlowParams flowParams = BillingFlowParams.newBuilder()
         .setSku(id_item)
         .setType(BillingClient.SkuType.SUBS)
@@ -233,6 +233,8 @@ public class RNIapModule extends ReactContextBaseJavaModule {
 
     int responseCode = mBillingClient.launchBillingFlow(getCurrentActivity(), flowParams);
     Log.d(TAG, "buyItem responseCode: " + responseCode);
+
+    buyItemCB = cb;
   }
 
   @ReactMethod
@@ -254,26 +256,30 @@ public class RNIapModule extends ReactContextBaseJavaModule {
                                             List<Purchase> purchasesList) {
         // JSONArray jsonArray = new JSONArray();
         if (responseCode == BillingClient.BillingResponse.OK && purchasesList != null) {
-          JSONArray jsonResponse = new JSONArray();
           for (Purchase purchase : purchasesList) {
             // Process the result.
             // jsonArray.put(purchase);
             Log.d(TAG, "responseCode: " + responseCode);
             Log.d(TAG, purchasesList.toString());
+
+            JSONArray jsonResponse = new JSONArray();
             try {
               JSONObject json = new JSONObject();
-              json.put("data", purchase.getOriginalJson());
+              json.put("orderId", purchase.getOrderId());
+              json.put("purchaseTime", purchase.getPurchaseTime());
+              json.put("purchaseToken", purchase.getPurchaseToken());
               json.put("signature", purchase.getSignature());
               jsonResponse.put(json);
             } catch (JSONException je) {
               cb.invoke(je.getMessage(), null);
               return;
             }
+
+            cb.invoke(null, jsonResponse.toString());
           }
-          cb.invoke(null, jsonResponse.toString());
-        } else {
-          cb.invoke(null, purchasesList.toString());
         }
+
+        cb.invoke(null, purchasesList.toString());
       }
     });
   }
@@ -408,20 +414,24 @@ public class RNIapModule extends ReactContextBaseJavaModule {
       Log.d(TAG, "Purchase Updated Listener");
       Log.d(TAG, "responseCode: " + responseCode);
       if (responseCode == BillingClient.BillingResponse.OK) {
-        Purchase purchase = purchases.get(0);
-        JSONObject json = new JSONObject();
-        try {
-          json.put("signature", purchase.getSignature());
-          json.put("data", purchase.getOriginalJson());
-        } catch (JSONException e) {
-          e.printStackTrace();
+        if (buyItemCB != null && purchases.size() >= 1) {
+          Log.d(TAG, purchases.toString());
+
+          JSONObject json = new JSONObject();
+          try {
+            json.put("data", purchases.get(0).getOriginalJson());
+            json.put("signature", purchases.get(0).getSignature());
+            Log.d(TAG, "return : " + json.toString());
+            buyItemCB.invoke(null, json.toString());
+          } catch (JSONException e) {
+            buyItemCB.invoke(e, null);
+          } finally {
+            buyItemCB = null;
+          }
         }
-        Log.d(TAG, purchases.toString());
-        if (buyItemCB != null) {
-          buyItemCB.invoke(null, json.toString());
-        }
-        buyItemCB = null;
-      } else if (buyItemCB != null) {
+        return;
+      }
+      if (buyItemCB != null) {
         buyItemCB.invoke(responseCode, null);
         buyItemCB = null;
       }
