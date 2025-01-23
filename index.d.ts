@@ -55,10 +55,10 @@ export function buyItem(item: string) : Promise<string>;
 export function buySubscribeItem(item: string) : Promise<any>;
 
 /** 
- * Get history of purchases.
+ * Refresh all items to make them available to buy again.
  * @returns {Promise<any>} Promise of the refreshed items.
 */
-export function fetchHistory() : Promise<any>;
+export function refreshAllItems() : Promise<any>;
 
 /**
  * Prepare IAP module for android. Should be called in android before using any methods in RNIap.
@@ -72,15 +72,6 @@ export function prepareAndroid() : Promise<string> | null;
  * @param {SkuTypeAndroid} [type] `'INAPP'` or `'SUBS'`
  */
 export function refreshPurchaseItemsAndroid(type?: SkuTypeAndroid) : void;
-
-/**
- * Get purchased items for android.
- * This method returns the current un-consumed products owned by the user, including both purchased items and items acquired by redeeming a promo code.
- * This method also gets parameter to refresh INAPP items or SUBS items.
- * @param {SkuTypeAndroid} [type] `'INAPP'` or `'SUBS' and default for 'INAPP'`
- * @returns {Promise<any>|null} Promise of the purchased items, or null if the Platform is not Android.
- */
-export function getPurchasesAndroid(type?: SkuTypeAndroid) : Promise<any> | null;
 
 /**
  * Get purchased items for android.
