@@ -255,27 +255,32 @@ public class RNIapModule extends ReactContextBaseJavaModule {
       @Override
       public void onPurchaseHistoryResponse(@BillingClient.BillingResponse int responseCode,
                                             List<Purchase> purchasesList) {
+        // JSONArray jsonArray = new JSONArray();
         if (responseCode == BillingClient.BillingResponse.OK && purchasesList != null) {
-          JSONArray jsonResponse = new JSONArray();
           for (Purchase purchase : purchasesList) {
             // Process the result.
             // jsonArray.put(purchase);
             Log.d(TAG, "responseCode: " + responseCode);
             Log.d(TAG, purchasesList.toString());
+
+            JSONArray jsonResponse = new JSONArray();
             try {
               JSONObject json = new JSONObject();
-              json.put("data", purchase.getOriginalJson());
+              json.put("orderId", purchase.getOrderId());
+              json.put("purchaseTime", purchase.getPurchaseTime());
+              json.put("purchaseToken", purchase.getPurchaseToken());
               json.put("signature", purchase.getSignature());
               jsonResponse.put(json);
             } catch (JSONException je) {
               cb.invoke(je.getMessage(), null);
               return;
             }
+
+            cb.invoke(null, jsonResponse.toString());
           }
-          cb.invoke(null, jsonResponse.toString());
-        } else {
-          cb.invoke(null, purchasesList.toString());
         }
+
+        cb.invoke(null, purchasesList.toString());
       }
     });
   }
@@ -419,9 +424,10 @@ public class RNIapModule extends ReactContextBaseJavaModule {
             json.put("signature", purchases.get(0).getSignature());
             Log.d(TAG, "return : " + json.toString());
             buyItemCB.invoke(null, json.toString());
-            buyItemCB = null;
           } catch (JSONException e) {
             buyItemCB.invoke(e, null);
+          } finally {
+            buyItemCB = null;
           }
         }
         return;
