@@ -24,7 +24,7 @@ To migrate `0.2.*` to `0.3.*`, You can follow below guide.
 | `` | `getAvailablePurchases` |
 | `buySubscribeItem` | `buySubscription` |
 | `buyItem` | `buyProduct` |
-| `consumeItemAndroid` | `consumePurchase` |
+| `consumeItemAndroid` | `consumeProduct` |
 | `refreshAllItems` | <span style="color: red">Not Available</span> |
 | `refreshPurchaseItemsAndroid` | <span style="color: red">Not Available</span> |
 
