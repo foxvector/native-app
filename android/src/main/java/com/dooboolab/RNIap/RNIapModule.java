@@ -60,6 +60,7 @@ public class RNIapModule extends ReactContextBaseJavaModule {
 
   private HashMap<String, ArrayList<Promise>> promises = new HashMap<>();
 
+  final Activity activity = getCurrentActivity();
   private ReactContext reactContext;
   private IInAppBillingService mService;
   private BillingClient mBillingClient;
@@ -127,7 +128,7 @@ public class RNIapModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void getItemsByType(String type, ReadableArray skus, final Promise promise) {
-    if (mService == null || mBillingClient == null) {
+    if (mService == null) {
       promise.reject(E_NOT_PREPARED, "IAP not prepared. Check if Google Play service is available.");
       return;
     }
@@ -221,7 +222,7 @@ public class RNIapModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void getPurchaseHistoryByType(final String type, final Promise promise) {
-    if (mService == null || mBillingClient == null) {
+    if (mService == null) {
       promise.reject(E_NOT_PREPARED, "IAP not prepared. Check if Google Play service is available.");
       return;
     }
@@ -262,27 +263,19 @@ public class RNIapModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void buyItemByType(String type, String sku, Promise promise) {
-    final Activity activity = getCurrentActivity();
-    if (activity == null) {
-      promise.reject(E_UNKNOWN, "getCurrentActivity returned null");
-    } else {
-      addPromiseForKey(PROMISE_BUY_ITEM, promise);
-      BillingFlowParams flowParams = BillingFlowParams.newBuilder()
-          .setSku(sku)
-          .setType(type)
-          .build();
+    addPromiseForKey(PROMISE_BUY_ITEM, promise);
+    BillingFlowParams flowParams = BillingFlowParams.newBuilder()
+        .setSku(sku)
+        .setType(type)
+        .build();
 
-      int responseCode = mBillingClient.launchBillingFlow(activity,flowParams);
-      Log.d(TAG, "buyItemByType (type: " + type + ", sku: " + sku + ") responseCode: " + responseCode + "(" + getBillingResponseCodeName(responseCode) + ")");
-      if (responseCode != BillingClient.BillingResponse.OK) {
-        rejectPromisesWithBillingError(PROMISE_BUY_ITEM,responseCode);
-      }
-    }
+    int responseCode = mBillingClient.launchBillingFlow(activity, flowParams);
+    Log.d(TAG, "buyItemByType (type: " + type + ", sku: " + sku + ") responseCode: " + responseCode + "(" + getBillingResponseCodeName(responseCode) + ")");
   }
 
   @ReactMethod
   public void consumeProduct(String token, final Promise promise) {
-    if (mService == null || mBillingClient == null) {
+    if (mService == null) {
       promise.reject(E_NOT_PREPARED, "IAP not prepared. Check if google play service is available.");
       return;
     }
